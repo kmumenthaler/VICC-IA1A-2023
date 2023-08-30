@@ -1,0 +1,77 @@
+body {
+    background-color: #f4f4f4;
+}
+
+.card {
+    margin-top: 50px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    font-weight: bold;
+}
+
+.btn-primary {
+    background-color: #007BFF;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-link {
+    font-weight: 500;
+}
+
+.nav-link:hover {
+    color: #fff;
+}
+
+.nav-link:hover {
+    transform: translateY(-3px);
+    transition: all 0.3s ease;
+}
+
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.container {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.5s ease;
+    transition-delay: 0.3s;  /* slight delay to make sure page is loaded */
+}
+
+body:is(.loaded) .container {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.navbar-nav .active-link {
+    background-color: #b7eff354; /* Grauer Hintergrund */
+}
+
+.navbar-nav .active-link .nav-link {
+    color: #ffffff !important;
+}
