@@ -94,3 +94,15 @@ body:is(.loaded) .container {
 .navbar-nav .active-link .nav-link {
     color: #ffffff !important;
 }
+
+.nav-link-profile > span {
+    padding: 10px !important;
+}
+
+@media (max-width: 991px) {
+    .navbar-nav .active-link {
+        background-color: #b7eff354; /* Grauer Hintergrund */
+        border-radius: 1%;
+        padding: 0px 5px 0px 5px
+    }
+}

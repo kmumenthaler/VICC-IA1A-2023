@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BuchRezensionen</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://kit.fontawesome.com/bb52666f3d.js" crossorigin="anonymous"></script>    
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
@@ -34,7 +36,10 @@
             <ul class="navbar-nav">
                 {% if session['logged_in'] %}
                 <li class="nav-item">
-                    <a class="nav-link" href="/logout">Abmelden</a>
+                    <a class="nav-link nav-link-profile" href="/profile"><span class="badge badge-dark ms-2">Profil: {{ session['username'] }}</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-profile" href="/logout"><span class="badge badge-danger ms-2">Abmelden</span></a>
                 </li>
                 {% else %}
                 <li class="nav-item">

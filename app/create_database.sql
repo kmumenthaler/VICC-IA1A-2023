@@ -4,7 +4,7 @@ USE BuchrezensionsPlattform;
 
 -- Erstellung der Benutzer-Tabelle
 CREATE TABLE Benutzer (
-    UserID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT PRIMARY KEY AUTO_INCREMENT,
     Benutzername VARCHAR(255) NOT NULL UNIQUE,
     Email VARCHAR(255) NOT NULL UNIQUE,
     Passwort VARCHAR(255) NOT NULL,
@@ -13,19 +13,20 @@ CREATE TABLE Benutzer (
 
 -- Erstellung der Bücher-Tabelle
 CREATE TABLE Bücher (
-    BuchID INT AUTO_INCREMENT PRIMARY KEY,
+    BuchID INT PRIMARY KEY AUTO_INCREMENT,
     Titel VARCHAR(255) NOT NULL,
-    Autor VARCHAR(255),
-    Erscheinungsjahr YEAR,
-    Zusammenfassung TEXT
+    Autor VARCHAR(255) NOT NULL,
+    Erscheinungsjahr INT,
+    Zusammenfassung TEXT,
+    Bild VARCHAR(255) -- Dies kann ein Link oder ein Pfad zu einem Bild sein
 );
 
 -- Erstellung der Bewertungen-Tabelle
 CREATE TABLE Bewertungen (
-    BewertungsID INT AUTO_INCREMENT PRIMARY KEY,
+    BewertungsID INT PRIMARY KEY AUTO_INCREMENT,
     UserID INT,
     BuchID INT,
-    Bewertung INT NOT NULL CHECK (Bewertung BETWEEN 1 AND 5), -- Annahme, dass Bewertungen von 1 bis 5 gehen
+    Bewertung INT CHECK (Bewertung >= 1 AND Bewertung <= 5),
     Kommentar TEXT,
     Datum DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (UserID) REFERENCES Benutzer(UserID),

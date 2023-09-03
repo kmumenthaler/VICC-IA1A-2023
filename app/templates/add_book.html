@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Neues Buch hinzufügen</h2>
+
+    <!-- enctype hinzugefügt, um Dateiuploads zu ermöglichen -->
+    <form action="/add-book" method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="title" class="form-label">Titel</label>
+            <input type="text" class="form-control" id="title" name="titel" required>
+        </div>
+        <div class="mb-3">
+            <label for="author" class="form-label">Autor</label>
+            <input type="text" class="form-control" id="author" name="autor" required>
+        </div>
+        <div class="mb-3">
+            <label for="year" class="form-label">Erscheinungsjahr</label>
+            <input type="number" class="form-control" id="year" name="erscheinungsjahr">
+        </div>
+        <div class="mb-3">
+            <label for="summary" class="form-label">Zusammenfassung</label>
+            <textarea class="form-control" id="summary" name="zusammenfassung" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="bookImage" class="form-label">Bild hochladen</label>
+            <input type="file" class="form-control" id="bookImage" name="bookImage" accept="image/*">
+        </div>
+        <button type="submit" class="btn btn-primary">Buch hinzufügen</button>
+    </form>
+</div>
+{% endblock %}

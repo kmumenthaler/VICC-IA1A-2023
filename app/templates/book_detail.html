@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <img src="{{ buch.Bild.replace('./', '/') }}" alt="{{ buch.Titel }}" class="img-thumbnail mb-4">
+        </div>
+        <div class="col-md-8">
+            <h2>{{ buch.Titel }}</h2>
+            <h5>{{ buch.Autor }}</h5>
+            <p>{{ buch.Erscheinungsjahr }}</p>
+            <p>{{ buch.Zusammenfassung }}</p>
+        </div>
+    </div>
+
+    {% if kommentare %}
+    <div class="mt-4">
+        <p>
+            <strong>Durchschnittliche Bewertung:</strong> 
+            {% for _ in range(durchschnittliche_bewertung) %}
+            <span class="fa-solid fa-star checked"></span>
+            {% endfor %}
+            {% for _ in range(5-durchschnittliche_bewertung) %}
+            <span class="fa-regular fa-star"></span>
+            {% endfor %}
+            {% if session['logged_in'] %}
+                {% if not hat_bewertung_abgegeben %}
+                <a href="{{ url_for('bewertung_abgeben', buch_id=buch.BuchID) }}" class="btn btn-link btn-sm">Bewertung abgeben</a>
+                {% endif %}
+            {% endif %}
+        </p>
+    </div>
+    {% else %}
+    <p>Keine Bewertungen vorhanden. <a href="{{ url_for('bewertung_abgeben', buch_id=buch.BuchID) }}" class="btn btn-link btn-sm">Bewertung abgeben</a></p>
+    {% endif %}
+    
+    <hr>
+    <h4>Kommentare:</h4>
+    {% if kommentare %}
+    <div class="row">
+        {% for kommentar in kommentare %}
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <strong>{{ kommentar.Benutzername }}</strong> 
+                    
+                    <!-- Hier fügen wir die Sternebewertung hinzu -->
+                    {% for _ in range(kommentar.Bewertung) %}
+                    <span class="fa-solid fa-star checked"></span>
+                    {% endfor %}
+                    {% for _ in range(5-kommentar.Bewertung) %}
+                    <span class="fa-regular fa-star"></span>
+                    {% endfor %}
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ kommentar.Kommentar }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>Es gibt noch keine Kommentare für dieses Buch.</p>
+    {% endif %}
+</div>
+{% endblock %}

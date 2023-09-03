@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Benutzerinformationen -->
+    <div class="row">
+        <div class="col-md-4 text-center">
+            <img src="{{ url_for('static', filename='img/default/profile-pic.png') }}" alt="Profilbild" class="img-thumbnail">
+        </div>
+        <div class="col-md-8">
+            <h2>{{ user.Benutzername }}</h2>
+            <p><strong>E-Mail:</strong> {{ user.Email }}</p>
+            <p><strong>Beigetreten:</strong> {{ user.Registrierungsdatum }}</p>
+            <!-- Profil löschen Button -->
+            <button class="btn btn-danger" onclick="confirmDelete()">Profil löschen</button>
+        </div>
+    </div>
+
+    <!-- Buchbewertungen -->
+    <h3 class="mt-5">Meine Buchbewertungen</h3>
+
+    {% if user_reviews %}
+        {% for book_review in user_reviews %}
+        <div class="card mb-3">
+            <div class="row g-0">
+                <div class="col-md-2">
+                    <img src="{{ book_review.Bild }}" alt="{{ book_review.Titel }}" class="img-fluid">
+                </div>
+                <div class="col-md-10">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ book_review.Titel }}</h5>
+                        <p class="card-text"><strong>Autor:</strong> {{ book_review.Autor }}</p>
+                        <p class="card-text"><strong>Bewertung:</strong> {{ book_review.Bewertung }} Sterne</p>
+                        <p class="card-text">{{ book_review.Kommentar }}</p>
+                        <p class="card-text"><small class="text-muted">Bewertet am: {{ book_review.Datum }}</small></p>
+                    </div>
+                    <div class="card-footer text-end">
+                        <button class="btn btn-warning">Bearbeiten</button>
+                        <button class="btn btn-danger">Löschen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="alert alert-info">Sie haben noch keine Bücher bewertet.</p>
+    {% endif %}
+
+    <!-- Statistiken -->
+    <div class="bg-light p-4 rounded mt-4">
+        <h3>Statistiken</h3>
+        {% if total_reviews %}
+            <p><strong>Gesamt Bewertungen:</strong> {{ total_reviews }}</p>
+            <p><strong>Durchschnittsbewertung:</strong> {{ avg_rating }} Sterne</p>
+        {% else %}
+            <p class="alert alert-info">Es sind nicht genügend Daten vorhanden um Statistiken anzeigen zu können.</p>
+        {% endif %}
+    </div>
+
+    <!-- Optionen -->
+    <div class="mt-4">
+        <a href="/add-book" class="btn btn-primary">Buch hinzufügen</a>
+    </div>
+
+    <!-- JavaScript zum Bestätigen des Profil-Löschens -->
+    <script>
+        function confirmDelete() {
+            var r = confirm("Möchten Sie Ihr Profil wirklich löschen?");
+            if (r == true) {
+                // Sie können hier einen AJAX-Aufruf machen oder den Benutzer zu einer anderen Route weiterleiten, 
+                // um den Löschvorgang durchzuführen
+                window.location.href = "/delete-profile"; // z.B. eine Route zum Löschen des Profils
+            }
+        }
+    </script>
+</div>
+{% endblock %}

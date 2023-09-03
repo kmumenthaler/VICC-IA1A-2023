@@ -1,7 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Unsere Bücher</h1>
-<p>Hier finden Sie eine Liste aller Bücher, für die Rezensionen verfügbar sind.</p>
-<!-- Hier würde eine Liste oder Tabelle mit Büchern eingefügt werden -->
+<div class="container mt-4">
+    <h2 class="mb-4">Verfügbare Bücher</h2>
+
+    <table class="table table-bordered table-hover">
+        <thead class="thead-dark">
+            <tr>
+                <th>Bild</th>
+                <th>Information</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for buch in buecher %}
+            <tr>
+                <td>
+                    {% if buch.Bild %}
+                    <img src="{{ buch.Bild }}" alt="{{ buch.Titel }}" class="img-thumbnail" width="300">
+                    {% else %}
+                    Kein Bild verfügbar
+                    {% endif %}
+                </td>
+                <td>
+                    <h4><a href="{{ url_for('book_detail', book_id=buch.BuchID) }}">{{ buch.Titel }}</a></h4>
+                    <p><strong>Autor:</strong> {{ buch.Autor }}</p>
+                    <p><strong>Erscheinungsjahr:</strong> {{ buch.Erscheinungsjahr }}</p>
+                    {% if buch.DurchschnittlicheBewertung %}
+                    <p>
+                        {% for _ in range(buch.DurchschnittlicheBewertung) %}
+                        <span class="fa-solid fa-star checked"></span>
+                        {% endfor %}
+                        {% for _ in range(5-buch.DurchschnittlicheBewertung) %}
+                        <span class="fa-regular fa-star"></span>
+                        {% endfor %}
+                    </p>
+                    {% else %}
+                    <p>Keine Bewertungen vorhanden.</p>
+                    {% endif %}                
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Bewertung für {{ buch.Titel }} abgeben</h2>
+    <form action="{{ url_for('bewertung_abgeben', buch_id=buch.BuchID) }}" method="post">
+        <div class="form-group">
+            <label for="bewertung">Bewertung:</label>
+            <select class="form-control" name="bewertung" id="bewertung" required>
+                <option value="1">1 Stern</option>
+                <option value="2">2 Sterne</option>
+                <option value="3">3 Sterne</option>
+                <option value="4">4 Sterne</option>
+                <option value="5">5 Sterne</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="kommentar">Kommentar (optional):</label>
+            <textarea class="form-control" name="kommentar" id="kommentar" rows="4"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Bewertung abgeben</button>
+    </form>
+</div>
+{% endblock %}
