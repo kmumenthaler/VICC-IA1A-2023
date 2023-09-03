@@ -1,5 +1,9 @@
 body {
-    background-color: #f4f4f4;
+    background-color: #e7e2b7;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+.bg-primary{
+    background-color: #79562fce!important;
 }
 
 .card {
@@ -12,7 +16,21 @@ body {
 }
 
 .btn-primary {
-    background-color: #007BFF;
+    background-color: #838383a4;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:hover {
+    background-color: #79562fce;
+}
+
+.form-control:focus {
+    color: #495057;
+    background-color: #fff;
+    border-color: #bbb77e;
+    outline: 0;
+    box-shadow: 0 0 0 .2rem rgba(224, 223, 118, 0.452);
 }
 
 .navbar {
@@ -70,6 +88,7 @@ body:is(.loaded) .container {
 
 .navbar-nav .active-link {
     background-color: #b7eff354; /* Grauer Hintergrund */
+    border-radius: 66%;
 }
 
 .navbar-nav .active-link .nav-link {
