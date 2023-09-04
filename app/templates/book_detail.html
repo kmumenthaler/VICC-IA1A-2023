@@ -24,6 +24,7 @@
             {% for _ in range(5-durchschnittliche_bewertung) %}
             <span class="fa-regular fa-star"></span>
             {% endfor %}
+            (<span>{{ bewertungs_anzahl }}</span>)            
             {% if session['logged_in'] %}
                 {% if not hat_bewertung_abgegeben %}
                 <a href="{{ url_for('bewertung_abgeben', buch_id=buch.BuchID) }}" class="btn btn-link btn-sm">Bewertung abgeben</a>

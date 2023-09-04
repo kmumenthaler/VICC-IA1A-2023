@@ -18,48 +18,120 @@ db_config = {
     'database': 'BuchrezensionsPlattform'
 }
 
-# Datenbankverbindung
-conn = mysql.connector.connect(**db_config)
-cursor = conn.cursor(dictionary=True)
+# Datenbankverbindung erstellen
+def get_db_connection():
+    conn = mysql.connector.connect(**db_config)
+    return conn, conn.cursor(dictionary=True)
+
+def compute_average_rating(ratings):
+    """Berechnet den durchschnittlichen Wert einer Liste von Bewertungen"""
+    if ratings:
+        return round(sum(ratings) / len(ratings))
+    return None
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+    # 5 neueste Bücher
+    newest_books_query = "SELECT * FROM Bücher ORDER BY BuchID DESC LIMIT 5"
+    cursor.execute(newest_books_query)
+    newest_books = cursor.fetchall()
+
+    # Beliebteste Bücher (wir nehmen hier auch 5)
+    popular_books_query = """
+    SELECT Bücher.*, AVG(Bewertungen.Bewertung) as avg_rating
+    FROM Bücher
+    JOIN Bewertungen ON Bücher.BuchID = Bewertungen.BuchID
+    GROUP BY Bücher.BuchID
+    ORDER BY avg_rating DESC, Bücher.BuchID DESC 
+    LIMIT 5
+    """
+    cursor.execute(popular_books_query)
+    popular_books = cursor.fetchall()
+
+    # Benutzeraktivität: 5 neueste Bewertungen
+    latest_reviews_query = """
+    SELECT Benutzer.Benutzername, Bücher.Titel, Bewertungen.Bewertung, Bewertungen.Kommentar, Bewertungen.Datum 
+    FROM Bewertungen
+    JOIN Benutzer ON Bewertungen.UserID = Benutzer.UserID
+    JOIN Bücher ON Bewertungen.BuchID = Bücher.BuchID
+    ORDER BY Bewertungen.Datum DESC
+    LIMIT 5
+    """
+    cursor.execute(latest_reviews_query)
+    latest_reviews = cursor.fetchall()
+
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+
+    return render_template('home.html', newest_books=newest_books, popular_books=popular_books, latest_reviews=latest_reviews)
 
 @app.route('/books')
 def books():
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
     cursor.execute("SELECT * FROM Bücher")
     buecher = cursor.fetchall()
 
     # Füge die durchschnittliche Bewertung zu jedem Buch hinzu
     for buch in buecher:
-        cursor.execute("SELECT AVG(Bewertung) as Durchschnitt FROM Bewertungen WHERE BuchID = %s", (buch['BuchID'],))
-        bewertung = cursor.fetchone()
-        buch['DurchschnittlicheBewertung'] = int(bewertung['Durchschnitt'] if bewertung['Durchschnitt'] else 0)
+        cursor.execute("SELECT Bewertung FROM Bewertungen WHERE BuchID = %s", (buch['BuchID'],))
+        bewertungen = cursor.fetchall()
+        ratings = [bewertung['Bewertung'] for bewertung in bewertungen]
+        buch['DurchschnittlicheBewertung'] = compute_average_rating(ratings)
+
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
 
     return render_template('books.html', buecher=buecher)
 
 @app.route('/book/<int:book_id>', methods=['GET'])
 def book_detail(book_id):
+
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
     cursor.execute("SELECT * FROM Bücher WHERE BuchID = %s", (book_id,))
     buch = cursor.fetchone()
     cursor.execute("SELECT b.Bewertung, b.Kommentar, u.Benutzername FROM Bewertungen b INNER JOIN Benutzer u ON b.UserID = u.UserID WHERE b.BuchID = %s", (book_id,))
     bewertungen = cursor.fetchall()
     kommentare = bewertungen
-    bewertung_werte = [bewertung['Bewertung'] for bewertung in bewertungen]
-    durchschnittliche_bewertung = int(round(sum(bewertung_werte) / len(bewertung_werte))) if bewertung_werte else None
-    hat_bewertet = hat_bewertung_abgegeben(session['userID'], book_id)
-    return render_template('book_detail.html', buch=buch, durchschnittliche_bewertung=durchschnittliche_bewertung, kommentare=kommentare, hat_bewertung_abgegeben=hat_bewertet, bewertungen=bewertungen)
+    ratings = [bewertung['Bewertung'] for bewertung in bewertungen]
+    durchschnittliche_bewertung = compute_average_rating(ratings)
+    cursor.execute("SELECT COUNT(*) FROM Bewertungen WHERE BuchID = %s", (book_id,))
+    bewertungs_anzahl = cursor.fetchone()['COUNT(*)']
+    
+    user_id = session.get('userID')
+    hat_bewertet = False
+    if user_id:
+        hat_bewertet = hat_bewertung_abgegeben(user_id, book_id)
+    
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+
+    return render_template('book_detail.html', buch=buch, durchschnittliche_bewertung=durchschnittliche_bewertung, kommentare=kommentare, hat_bewertung_abgegeben=hat_bewertet, bewertungen=bewertungen, bewertungs_anzahl=bewertungs_anzahl)
 
 @app.route('/buch/<int:buch_id>/bewertung_abgeben', methods=['GET', 'POST'])
 def bewertung_abgeben(buch_id):
-    if 'logged_in' not in session:
+    
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
+    if not session.get('logged_in', False):
         flash('Bitte melden Sie sich zuerst an!')
         return redirect(url_for('login'))
-    if hat_bewertung_abgegeben(session['userID'], buch_id):
+    
+    user_id = session.get('userID')
+    if hat_bewertung_abgegeben(user_id, buch_id):  # Die Überprüfung wurde nach dem Login-Check verschoben
         flash('Sie haben bereits eine Bewertung für dieses Buch abgegeben.')
         return redirect(url_for('book_detail', book_id=buch_id))
-    if request.method == 'POST':
+
+    if request.method == 'POST':        
         bewertung = request.form.get('bewertung')
         kommentar = request.form.get('kommentar')
         current_date = datetime.now().date()
@@ -74,18 +146,40 @@ def bewertung_abgeben(buch_id):
             conn.rollback()
             flash('Ein Fehler ist aufgetreten. Versuchen Sie es später erneut.')
             print(e)
+
+        # Schließe die Datenbankverbindung am Ende der Route
+        cursor.close()
+        conn.close()
+
         return redirect(url_for('book_detail', book_id=buch_id))
     buch = get_buch_info(buch_id)
     return render_template('bewertung_abgeben.html', buch=buch)
 
 def get_buch_info(buch_id):
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
     cursor.execute("SELECT * FROM Bücher WHERE BuchID = %s", (buch_id,))
     buch = cursor.fetchone()
+
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+
     return buch
 
 def hat_bewertung_abgegeben(user_id, buch_id):
+    # Datenbankverbindung und Cursor erhalten
+    conn, _ = get_db_connection()  # Das Unterstrich-Zeichen (_) wird verwendet, um den zurückgegebenen Cursor zu ignorieren
+    cursor = conn.cursor(buffered=True)
+
     cursor.execute("SELECT * FROM Bewertungen WHERE UserID = %s AND BuchID = %s", (user_id, buch_id))
     bewertung = cursor.fetchone()
+
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+    
     return bool(bewertung)
 
 @app.route('/reviews')
@@ -95,6 +189,9 @@ def reviews():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
     if request.method == 'POST':
         username = request.form.get('username')
         email = request.form.get('email')
@@ -111,15 +208,28 @@ def register():
             )
             conn.commit()
             flash('Erfolgreich registriert!')
+
+            # Schließe die Datenbankverbindung am Ende der Route
+            cursor.close()
+            conn.close()
+            
             return redirect(url_for('home'))
         except Exception as e:
             conn.rollback()
             flash('Ein Fehler ist aufgetreten. Versuchen Sie es später erneut.')
             print(e)
+
+            # Schließe die Datenbankverbindung am Ende der Route
+            cursor.close()
+            conn.close()
+
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -135,6 +245,10 @@ def login():
             return redirect(url_for('home'))
         else:
             flash('Falscher Benutzername oder Passwort!')
+
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
     return render_template('login.html')
 
 @app.route('/logout')
@@ -143,8 +257,11 @@ def logout():
     flash('Erfolgreich abgemeldet!')
     return redirect(url_for('home'))
 
-@app.route('/add_book', methods=['GET', 'POST'])
+@app.route('/add-book', methods=['GET', 'POST'])
 def add_book():
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+    
     if 'logged_in' not in session:
         flash('Bitte melden Sie sich zuerst an!')
         return redirect(url_for('login'))
@@ -169,11 +286,22 @@ def add_book():
                 conn.rollback()
                 flash('Ein Fehler ist aufgetreten. Versuchen Sie es später erneut.')
                 print(e)
+                # Schließe die Datenbankverbindung am Ende der Route
+                cursor.close()
+                conn.close()
             return redirect(url_for('books'))
+        
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+
     return render_template('add_book.html')
 
 @app.route('/profile', methods=['GET'])
 def profile():
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
     if 'logged_in' not in session:
         flash('Bitte melden Sie sich zuerst an!')
         return redirect(url_for('login'))
@@ -183,7 +311,7 @@ def profile():
     user = cursor.fetchone()
 
     cursor.execute("""
-    SELECT b.*, br.Bewertung, br.Kommentar, br.Datum 
+    SELECT b.*, br.BewertungsID, br.Bewertung, br.Kommentar, br.Datum 
     FROM Bewertungen br
     INNER JOIN Bücher b ON b.BuchID = br.BuchID
     WHERE br.UserID = %s
@@ -193,7 +321,113 @@ def profile():
     total_reviews = len(user_reviews)
     avg_rating = round(sum([r['Bewertung'] for r in user_reviews]) / total_reviews, 2) if user_reviews else None
 
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+
     return render_template('profile.html', user=user, user_reviews=user_reviews, total_reviews=total_reviews, avg_rating=avg_rating)
+
+@app.route('/delete-profile')
+def delete_profile():
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+    
+    # Überprüfe, ob der Benutzer angemeldet ist
+    user_id = session.get('userID')
+    if not user_id:
+        flash('Du musst angemeldet sein, um dein Profil zu löschen.', 'danger')
+        return redirect(url_for('login')) # Angenommen, du hast eine 'login'-Route
+
+    # Lösche alle zugehörigen Daten (z.B. Bewertungen) 
+    # - Je nach Datenbankdesign könnten dies auch Fremdschlüssel-Beziehungen mit CASCADE-Löschen übernehmen.
+    cursor.execute("DELETE FROM Bewertungen WHERE UserID = %s", (user_id,))
+
+    # Lösche den Benutzer
+    cursor.execute("DELETE FROM Benutzer WHERE UserID = %s", (user_id,))
+    
+    # Commit die Änderungen
+    conn.commit()
+
+    # Logge den Benutzer aus
+    session.pop('logged_in', None)
+    session.pop('username', None)
+    session.pop('userID', None)
+    
+    # Informiere den Benutzer, dass das Profil gelöscht wurde
+    flash('Dein Profil wurde erfolgreich gelöscht.', 'success')
+
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+
+    # Weiterleitung zur Startseite
+    return redirect(url_for('home')) # Angenommen, du hast eine 'index'-Route
+
+@app.route('/edit-review/<int:review_id>', methods=['GET', 'POST'])
+def edit_review(review_id):
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
+    # Wenn das Formular abgesendet wurde
+    if request.method == 'POST':
+        bewertung = request.form.get('bewertung')
+        kommentar = request.form.get('kommentar')
+
+        # Aktualisiere die Bewertungen-Tabelle mit den neuen Werten
+        try:
+            cursor.execute("""
+                UPDATE Bewertungen 
+                SET Bewertung = %s, Kommentar = %s 
+                WHERE BewertungsID = %s
+                """, (bewertung, kommentar, review_id))
+            conn.commit()
+
+            flash('Bewertung erfolgreich aktualisiert!', 'success')
+            return redirect(url_for('profile'))  # or redirect to any other endpoint
+        except Exception as e:
+            flash('Ein Fehler ist aufgetreten. Die Bewertung konnte nicht aktualisiert werden.', 'error')
+            print(e)  # or log the error
+        finally:
+            # Schließe die Datenbankverbindung am Ende der Route
+            cursor.close()
+            conn.close()
+            redirect(url_for('profile')) # Assuming you want to redirect to profile after a post request as well.
+
+    # Für GET-Anfragen:
+    # Holt die Rezension mithilfe der review_id
+    cursor.execute("SELECT * FROM Bewertungen WHERE BewertungsID = %s", (review_id,))
+    review = cursor.fetchone()    
+    if not review:
+        flash("Rezension nicht gefunden!")
+        return redirect(url_for('profile'))  # Annahme, dass Sie eine Funktion namens profile_page haben
+    
+    # Schließe die Datenbankverbindung am Ende der Route
+    cursor.close()
+    conn.close()
+    
+    return render_template('edit_review.html', review=review)  # Das sollte 'edit_review.html' und nicht 'profile' sein.
+
+@app.route('/delete-review/<int:review_id>')
+def delete_review(review_id):
+    # Datenbankverbindung erstellen
+    conn, cursor = get_db_connection()
+
+    # Löscht die Rezension mithilfe der review_id
+    try:
+        cursor.execute("DELETE FROM Bewertungen WHERE BewertungsID = %s", (review_id,))
+        conn.commit()
+        flash("Rezension erfolgreich gelöscht!")
+        return redirect(url_for('profile'))
+    except Exception as e:
+        conn.rollback()
+        print(e)
+        flash("Rezension konnte nicht gelöscht werden!")
+        return redirect(url_for('profile'))
+    finally:
+        # Schließe die Datenbankverbindung am Ende der Funktion
+        cursor.close()
+        conn.close()
+        return redirect(url_for('profile'))
 
 if __name__ == '__main__':
     app.run(debug=True)

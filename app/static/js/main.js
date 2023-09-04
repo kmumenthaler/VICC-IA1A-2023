@@ -15,3 +15,19 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+function editReview(button) {
+    var id = button.getAttribute("data-id");
+    // Weiterleitung zur Bearbeitungsseite mit der ID der Rezension
+    window.location.href = "/edit-review/" + id;
+}
+
+function deleteReview(button) {
+    var id = button.getAttribute("data-id");
+    var r = confirm("Möchten Sie diese Rezension wirklich löschen?");
+    if (r == true) {
+        // Sie können hier einen AJAX-Aufruf machen oder den Benutzer zu einer anderen Route weiterleiten,
+        // um den Löschvorgang durchzuführen
+        window.location.href = "/delete-review/" + id;
+    }
+}
+

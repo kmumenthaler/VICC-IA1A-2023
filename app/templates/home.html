@@ -1,6 +1,64 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Willkommen bei BuchRezensionen</h1>
-<p>Hier finden Sie die neuesten Buchrezensionen und können Ihre eigenen Eindrücke von Büchern teilen.</p>
+<div class="container mt-4">
+    <h2 class="mb-4">Dashboard</h2>
+
+    <!-- Neueste Bücher -->
+    <section>
+        <h3 class="mb-3">Neueste Bücher</h3>
+        <div class="row">
+        {% for buch in newest_books %}
+            <div class="col-md-2 mb-4">
+                <a href="{{ url_for('book_detail', book_id=buch.BuchID) }}" class="text-decoration-none">
+                    <div class="card hover-shadow-lg">
+                        <img src="{{ buch.Bild }}" alt="{{ buch.Titel }}" class="card-img-top">
+                        <div class="card-body">
+                            <h5 class="card-title text-dark">{{ buch.Titel }}</h5>
+                            <p class="card-text text-dark">{{ buch.Autor }} ({{ buch.Erscheinungsjahr }})</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+        </div>
+    </section>
+
+    <!-- Beliebteste Bücher -->
+    <section class="mt-5">
+        <h3 class="mb-3">Empfohlen</h3>
+        <div class="row">
+        {% for buch in popular_books %}
+            <div class="col-md-2 mb-4">
+                <a href="{{ url_for('book_detail', book_id=buch.BuchID) }}" class="text-decoration-none">
+                    <div class="card hover-shadow-lg">
+                        <img src="{{ buch.Bild }}" alt="{{ buch.Titel }}" class="card-img-top">
+                        <div class="card-body">
+                            <h5 class="card-title text-dark">{{ buch.Titel }}</h5>
+                            <p class="card-text text-dark">{{ buch.Autor }} ({{ buch.Erscheinungsjahr }})</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+        </div>
+    </section>
+    
+    <!-- Benutzeraktivität -->
+    <section class="mt-5">
+        <h3 class="mb-3">Benutzeraktivität</h3>
+        <ul class="list-group">
+        {% for review in latest_reviews %}
+            <li class="list-group-item">
+                <strong>{{ review.Benutzername }}</strong> hat das Buch <strong>{{ review.Titel }}</strong> am {{ review.Datum }} bewertet. <br>
+                Bewertung: {{ review.Bewertung }} Sterne <br>
+                Kommentar: {{ review.Kommentar }}
+            </li>
+        {% endfor %}
+        </ul>
+        {% if not latest_reviews %}
+            <p class="alert alert-info mt-3">Derzeit gibt es keine Benutzeraktivität.</p>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}
