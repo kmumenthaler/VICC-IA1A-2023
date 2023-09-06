@@ -1,3 +1,5 @@
+from database import get_db_connection, get_newest_books, get_popular_books, get_latest_reviews, get_all_books, get_book_details
+from utils import compute_average_rating
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, current_user
 import mysql.connector
@@ -10,33 +12,13 @@ UPLOAD_FOLDER = './static/books/'
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '1576bfab8ae6bda607dd03c271afe64a'
 
-# Datenbank-Verbindungsinformationen
-db_config = {
-    'host': 'db',
-    'user': 'root',
-    'password': 'Start123.',
-    'database': 'BuchrezensionsPlattform'
-}
-
-# Datenbankverbindung erstellen
-def get_db_connection():
-    conn = mysql.connector.connect(**db_config)
-    return conn, conn.cursor(dictionary=True)
-
-def compute_average_rating(ratings):
-    """Berechnet den durchschnittlichen Wert einer Liste von Bewertungen"""
-    if ratings:
-        return round(sum(ratings) / len(ratings))
-    return None
-
 @app.route('/')
 def home():
     # Datenbankverbindung erstellen
     conn, cursor = get_db_connection()
     # 5 neueste Bücher
     newest_books_query = "SELECT * FROM Bücher ORDER BY BuchID DESC LIMIT 5"
-    cursor.execute(newest_books_query)
-    newest_books = cursor.fetchall()
+    newest_books = get_newest_books(cursor)
 
     # Beliebteste Bücher (wir nehmen hier auch 5)
     popular_books_query = """
@@ -47,8 +29,7 @@ def home():
     ORDER BY avg_rating DESC, Bücher.BuchID DESC 
     LIMIT 5
     """
-    cursor.execute(popular_books_query)
-    popular_books = cursor.fetchall()
+    popular_books = get_popular_books(cursor)
 
     # Benutzeraktivität: 5 neueste Bewertungen
     latest_reviews_query = """
@@ -59,8 +40,7 @@ def home():
     ORDER BY Bewertungen.Datum DESC
     LIMIT 5
     """
-    cursor.execute(latest_reviews_query)
-    latest_reviews = cursor.fetchall()
+    latest_reviews = get_latest_reviews(cursor)
 
     # Schließe die Datenbankverbindung am Ende der Route
     cursor.close()
@@ -73,8 +53,7 @@ def books():
     # Datenbankverbindung erstellen
     conn, cursor = get_db_connection()
 
-    cursor.execute("SELECT * FROM Bücher")
-    buecher = cursor.fetchall()
+    buecher = get_all_books(cursor)
 
     # Füge die durchschnittliche Bewertung zu jedem Buch hinzu
     for buch in buecher:
@@ -95,8 +74,7 @@ def book_detail(book_id):
     # Datenbankverbindung erstellen
     conn, cursor = get_db_connection()
 
-    cursor.execute("SELECT * FROM Bücher WHERE BuchID = %s", (book_id,))
-    buch = cursor.fetchone()
+    buch = get_book_details(cursor, book_id)
     cursor.execute("SELECT b.Bewertung, b.Kommentar, u.Benutzername FROM Bewertungen b INNER JOIN Benutzer u ON b.UserID = u.UserID WHERE b.BuchID = %s", (book_id,))
     bewertungen = cursor.fetchall()
     kommentare = bewertungen
