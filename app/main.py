@@ -3,21 +3,31 @@ import config
 from database import *
 from utils import compute_average_rating
 from flask import Flask, render_template, request, redirect, url_for, flash, session
-from flask_login import LoginManager, current_user
-import mysql.connector
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
+from User import User
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'  # Die Route, zu der die Benutzer weitergeleitet werden, wenn sie nicht eingeloggt sind.
+login_manager.login_message = 'Bitte melde dich an!'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User(user_id)
 
 @app.route('/')
 def home():
     # 5 neueste Bücher
     newest_books = get_newest_books()
 
-    # Beliebteste Bücher (wir nehmen hier auch 5)
+    # Beliebteste Bücher (5 beliebte Bücher)
     popular_books = get_popular_books()
 
     # Benutzeraktivität: 5 neueste Bewertungen
@@ -46,36 +56,30 @@ def book_detail(book_id):
     durchschnittliche_bewertung = compute_average_rating(ratings)
     bewertungs_anzahl = get_review_count_for_book(book_id)
     
-    user_id = session.get('userID')
+    user = current_user
     hat_bewertet = False
-    if user_id:
-        hat_bewertet = user_has_reviewed_book(user_id, book_id)
+    if user.is_authenticated:
+        hat_bewertet = user.has_reviewed_book(book_id)
 
     return render_template('book_detail.html', buch=buch, durchschnittliche_bewertung=durchschnittliche_bewertung, kommentare=kommentare, hat_bewertung_abgegeben=hat_bewertet, bewertungen=bewertungen, bewertungs_anzahl=bewertungs_anzahl)
 
-@app.route('/buch/<int:buch_id>/bewertung_abgeben', methods=['GET', 'POST'])
+@app.route('/book/<int:buch_id>/bewertung_abgeben', methods=['GET', 'POST'])
+@login_required
 def bewertung_abgeben(buch_id):
-    if not session.get('logged_in', False):
-        flash('Bitte melden Sie sich zuerst an!')
-        return redirect(url_for('login'))
+    # Angemeldeter Benutzer
+    user = current_user
     
-    user_id = session.get('userID')
-    if user_has_reviewed_book(user_id, buch_id):  # Die Überprüfung wurde nach dem Login-Check verschoben
+    if user.has_reviewed_book(buch_id):
         flash('Sie haben bereits eine Bewertung für dieses Buch abgegeben.')
         return redirect(url_for('book_detail', book_id=buch_id))
 
-    if request.method == 'POST':        
+    if request.method == 'POST':
         bewertung = request.form.get('bewertung')
         kommentar = request.form.get('kommentar')
-        current_date = datetime.now().date()
-        try:
-            add_review_for_book(buch_id, user_id, bewertung, kommentar, current_date)
-            
-            flash('Ihre Bewertung wurde erfolgreich abgegeben!')
-        except Exception as e:
-            
-            flash('Ein Fehler ist aufgetreten. Versuchen Sie es später erneut.')
-            print(e)
+        date = datetime.now().date()
+
+        user.add_review(buch_id, bewertung, kommentar, date)
+        flash('Ihre Bewertung wurde erfolgreich abgegeben!')
 
         return redirect(url_for('book_detail', book_id=buch_id))
 
@@ -86,6 +90,7 @@ def bewertung_abgeben(buch_id):
 def register():
     if request.method == 'POST':
         username, email, password, confirm_password = get_user_input()
+        registration_date = datetime.now().date()
 
         # Überprüfen, ob alle Felder ausgefüllt sind
         if not all([username, email, password, confirm_password]):
@@ -113,11 +118,14 @@ def register():
             return render_registration_page()
 
         # Benutzer registrieren
-        if register_new_user(username, email, password):
-            flash('Erfolgreich registriert!')
+        user = User()
+        registration_response = user.register(username, email, password, registration_date)
+
+        flash(registration_response)
+        if registration_response == "Registrierung erfolgreich!":
             return redirect(url_for('home'))
         else:
-            flash_registration_error()
+            return render_registration_page()
 
     return render_registration_page()
 
@@ -126,25 +134,27 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        user = check_user_credentials(username, password)
 
-        if user:
-            set_user_session(user, username)
-            flash('Erfolgreich angemeldet!')
+        user = User()
+        if User.authenticate(user, username, password):
+            login_user(user)
+            flash('Erfolgreich angemeldet!')            
             return redirect_to_home()
         else:
             flash_login_error()
     return render_login_page()
 
 @app.route('/logout')
+@login_required
 def logout():
-    session.clear()
+    logout_user()
     flash('Erfolgreich abgemeldet!')
     return redirect(url_for('home'))
 
 @app.route('/add-book', methods=['GET', 'POST'])
+@login_required
 def add_book():
-    if 'logged_in' not in session:
+    if not current_user.is_authenticated:
         flash('Bitte melden Sie sich zuerst an!')
         return redirect(url_for('login'))
     if request.method == 'POST':
@@ -168,79 +178,71 @@ def add_book():
     return render_template('add_book.html')
 
 @app.route('/profile', methods=['GET'])
+@login_required
 def profile():
-    if 'logged_in' not in session:
+    if not current_user.is_authenticated:
         flash('Bitte melden Sie sich zuerst an!')
         return redirect(url_for('login'))
 
-    user_id = session.get('userID')
-    user = get_user_details(user_id)
-    user_reviews = get_user_reviews(user_id)
+    user = current_user
+    user_details = user.load_user_details()
+    user_reviews = user.get_reviews()
 
     total_reviews = len(user_reviews)
     avg_rating = round(sum([r['Bewertung'] for r in user_reviews]) / total_reviews, 2) if user_reviews else None
 
-    return render_template('profile.html', user=user, user_reviews=user_reviews, total_reviews=total_reviews, avg_rating=avg_rating)
+    return render_template('profile.html', user=user_details, user_reviews=user_reviews, total_reviews=total_reviews, avg_rating=avg_rating)
 
 @app.route('/delete-profile')
+@login_required
 def delete_profile():
-    # Überprüfe, ob der Benutzer angemeldet ist
-    user_id = session.get('userID')
-    if not user_id:
-        flash('Du musst angemeldet sein, um dein Profil zu löschen.', 'danger')
-        return redirect(url_for('login')) # Angenommen, du hast eine 'login'-Route
-
+    user = current_user
+    
     # Lösche alle zugehörigen Daten (z.B. Bewertungen) 
-    delete_user_reviews(user_id)
+    user.delete_reviews()
 
     # Lösche den Benutzer
-    delete_user(user_id)
+    user.delete()
 
     # Logge den Benutzer aus
-    session.pop('logged_in', None)
-    session.pop('username', None)
-    session.pop('userID', None)
+    logout_user()
     
     # Informiere den Benutzer, dass das Profil gelöscht wurde
     flash('Dein Profil wurde erfolgreich gelöscht.', 'success')    
 
     # Weiterleitung zur Startseite
-    return redirect(url_for('home')) # Angenommen, du hast eine 'index'-Route
+    return redirect(url_for('home'))
 
 @app.route('/edit-review/<int:review_id>', methods=['GET', 'POST'])
+@login_required
 def edit_review(review_id):
-    # Wenn das Formular abgesendet wurde
+    user = current_user
+    review = user.get_review(review_id)
+    if not review:
+        flash("Rezension nicht gefunden!")
+        return redirect(url_for('profile'))
+
     if request.method == 'POST':
         bewertung = request.form.get('bewertung')
         kommentar = request.form.get('kommentar')
 
-        # Aktualisiere die Bewertungen-Tabelle mit den neuen Werten
-        if update_review(bewertung, kommentar, review_id):
-            flash('Bewertung erfolgreich aktualisiert!', 'success')
-            return redirect(url_for('profile'))  # or redirect to any other endpoint
-        else:
-            flash('Ein Fehler ist aufgetreten. Die Bewertung konnte nicht aktualisiert werden.', 'error')
-            return redirect(url_for('profile')) # Assuming you want to redirect to profile after a post request as well.
+        user.edit_review(bewertung, kommentar, review_id)
+        flash('Bewertung erfolgreich aktualisiert!')
 
-    # Für GET-Anfragen:
-    # Holt die Rezension mithilfe der review_id
-    review = get_review_by_id(review_id)
-    if not review:
-        flash("Rezension nicht gefunden!")
-        return redirect(url_for('profile'))  # Annahme, dass Sie eine Funktion namens profile_page haben
-    
+        return redirect(url_for('profile'))
+
     return render_template('edit_review.html', review=review)
 
 @app.route('/delete-review/<int:review_id>')
+@login_required
 def delete_review(review_id):
-
-    # Löscht die Rezension mithilfe der review_id
-    if delete_review_by_id(review_id):
+    user = current_user
+    if user.delete_review(review_id):
         flash("Rezension erfolgreich gelöscht!")
     else:
         flash("Rezension konnte nicht gelöscht werden!")
-    
-    return redirect(url_for('profile'))
 
+    return redirect(url_for('profile'))
+    
 if __name__ == '__main__':
     app.run(debug=True)
