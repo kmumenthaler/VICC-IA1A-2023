@@ -1,12 +1,12 @@
+import os
 from utils import *
 import config
 from database import *
 from utils import compute_average_rating
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime
 from werkzeug.utils import secure_filename
-import os
 from User import User
 
 app = Flask(__name__)
@@ -243,6 +243,28 @@ def delete_review(review_id):
         flash("Rezension konnte nicht gelöscht werden!")
 
     return redirect(url_for('profile'))
+
+
+######## API ROUTES ########
+# API-Route, um alle Bücher abzurufen
+@app.route('/api/books', methods=['GET'])
+def api_get_books():
+    books = get_all_books()
+    return jsonify(books)
+
+# API-Route, um ein bestimmtes Buch abzurufen
+@app.route('/api/books/<int:book_id>', methods=['GET'])
+def api_get_book(book_id):
+    books = get_buch_info(book_id)  
+    return jsonify(books)
+
+# API-Route, um alle Bewertungen für ein bestimmtes Buch abzurufen
+@app.route('/api/reviews/<int:book_id>', methods=['GET'])
+def api_get_reviews_for_book(book_id):
+    reviews = get_book_reviews_and_comments(book_id)
+    return jsonify(reviews)
+
+
     
 if __name__ == '__main__':
     app.run(debug=True)
