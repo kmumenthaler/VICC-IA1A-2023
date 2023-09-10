@@ -12,6 +12,7 @@ services:
       - "3306:3306"
     volumes:
       - ./db:/var/lib/mysql
+      - ./create_database.sql:/docker-entrypoint-initdb.d/create_database.sql
 
   nginx:
     image: nginx:stable-alpine

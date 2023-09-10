@@ -245,21 +245,24 @@ def delete_review(review_id):
     return redirect(url_for('profile'))
 
 
-######## API ROUTES ########
+######## API ROUTEN ########
 # API-Route, um alle Bücher abzurufen
 @app.route('/api/books', methods=['GET'])
+@login_required
 def api_get_books():
     books = get_all_books()
     return jsonify(books)
 
 # API-Route, um ein bestimmtes Buch abzurufen
 @app.route('/api/books/<int:book_id>', methods=['GET'])
+@login_required
 def api_get_book(book_id):
     books = get_buch_info(book_id)  
     return jsonify(books)
 
 # API-Route, um alle Bewertungen für ein bestimmtes Buch abzurufen
 @app.route('/api/reviews/<int:book_id>', methods=['GET'])
+@login_required
 def api_get_reviews_for_book(book_id):
     reviews = get_book_reviews_and_comments(book_id)
     return jsonify(reviews)
