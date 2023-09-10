@@ -32,6 +32,6 @@ services:
     volumes:
       - ./app:/app
       - ./app/static/img/books:/app/static/img/books:rw
-    command: gunicorn -w 4 --bind 0.0.0.0:5000 wsgi:app
+    command: "-w 4 --bind 0.0.0.0:5000 wsgi:app"
     depends_on:
       - "db"

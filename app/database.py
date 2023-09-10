@@ -1,7 +1,7 @@
-
 import mysql.connector
 from config import DB_CONFIG
 from flask import flash
+from bcrypt import *
 
 def get_database_config():
     return DB_CONFIG
@@ -12,12 +12,36 @@ def get_db_connection():
     conn = mysql.connector.connect(**db_config)
     return conn, conn.cursor(dictionary=True)
 
+def hash_existing_passwords():
+    conn, cursor = get_db_connection()
+
+    # Alle Benutzer aus der Datenbank abrufen
+    cursor.execute("SELECT UserID, Passwort FROM Benutzer")
+    users = cursor.fetchall()
+
+    for user in users:
+        # Das Passwort des Benutzers hashen
+        hashed_password = hashpw(user['Passwort'].encode('utf-8'), gensalt())
+        
+        # Das gehashte Passwort in der Datenbank aktualisieren
+        cursor.execute(
+            "UPDATE Benutzer SET Passwort=%s WHERE UserID=%s", 
+            (hashed_password.decode('utf-8'), user['UserID'])
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
 def register_user(username, email, password, registration_date):
+    # Erzeugen eines Salt und Hash des Passworts
+    hashed_password = hashpw(password.encode('utf-8'), gensalt())
+
     conn, cursor = get_db_connection()
     try:
         cursor.execute(
             "INSERT INTO Benutzer (Benutzername, Email, Passwort, Registrierungsdatum) VALUES (%s, %s, %s, %s)",
-            (username, email, password, registration_date)
+            (username, email, hashed_password, registration_date)
         )
         conn.commit()
         return True
@@ -61,16 +85,17 @@ def email_exists(email):
 
 def check_user_credentials(username, password):
     conn, cursor = get_db_connection()
-    
+
     cursor.execute(
         "SELECT Passwort, UserID FROM Benutzer WHERE Benutzername=%s", (username,)
     )
     result = cursor.fetchone()
-    
+
     cursor.close()
     conn.close()
-    
-    if result and result['Passwort'] == password:
+
+    # Überprüfen, ob das eingegebene Passwort mit dem gespeicherten Hash übereinstimmt
+    if result and checkpw(password.encode('utf-8'), result['Passwort'].encode('utf-8')):
         return result
     return None
 

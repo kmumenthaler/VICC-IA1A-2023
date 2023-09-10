@@ -244,6 +244,11 @@ def delete_review(review_id):
 
     return redirect(url_for('profile'))
 
+@app.route('/exec/hash_pws', methods=['GET'])
+def hash_pws():
+    hash_existing_passwords()
+    return True
+
 
 ######## API ROUTEN ########
 # API-Route, um alle Bücher abzurufen
