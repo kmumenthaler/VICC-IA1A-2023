@@ -34,9 +34,11 @@
             </ul>
             <!-- Login/Register Links -->
             <ul class="navbar-nav">
-                {% if session['logged_in'] %}
+                {% if current_user.is_authenticated %}
                 <li class="nav-item">
-                    <a class="nav-link nav-link-profile" href="/profile"><span class="badge badge-dark ms-2">Profil: {{ session['username'] }}</span></a>
+                    <a class="nav-link nav-link-profile" href="/profile">
+                        <span class="badge badge-dark ms-2">Profil: {{ current_user.load_user_details().Benutzername }}</span>
+                    </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link nav-link-profile" href="/logout"><span class="badge badge-danger ms-2">Abmelden</span></a>

@@ -12,6 +12,7 @@ services:
       - "3306:3306"
     volumes:
       - ./db:/var/lib/mysql
+      - ./create_database.sql:/docker-entrypoint-initdb.d/create_database.sql
 
   nginx:
     image: nginx:stable-alpine
@@ -31,6 +32,6 @@ services:
     volumes:
       - ./app:/app
       - ./app/static/img/books:/app/static/img/books:rw
-    command: gunicorn -w 4 --bind 0.0.0.0:5000 wsgi:app
+    command: "-w 4 --bind 0.0.0.0:5000 wsgi:app"
     depends_on:
       - "db"
